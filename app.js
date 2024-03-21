@@ -2,9 +2,13 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { exec } = require('child_process');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Middleware to parse JSON body
+app.use(express.json());
 
 // Set storage engine
 const storage = multer.diskStorage({
@@ -30,11 +34,19 @@ app.post('/upload', (req, res) => {
       res.status(400).send('Error uploading file');
     } else {
       const inputFilePath = `./uploads/${req.file.originalname}`;
-      const outputFilePath = `./compressed/${req.file.originalname}`;
+      const outputDirectory = './compressed/';
+      const outputFilePath = `${outputDirectory}${req.file.originalname}`;
+
+      // Create output directory if it doesn't exist
+      if (!fs.existsSync(outputDirectory)) {
+        fs.mkdirSync(outputDirectory);
+      }
+
+      // Access compression percentage from request body
+      const compressionPercentage = req.body.compressionPercentage;
 
       // Command to compress using FFmpeg
-      const compressionPercentage = req.body.compressionPercentage;
-      const ffmpegCommand = `ffmpeg -i ${inputFilePath} -vf "scale=iw*${compressionPercentage}/100:ih*${compressionPercentage}/100" ${outputFilePath}`;
+      const ffmpegCommand = `ffmpeg -i "${inputFilePath}" -vf "scale=iw*${compressionPercentage}/100:ih*${compressionPercentage}/100" "${outputFilePath}"`;
 
       // Execute FFmpeg command
       exec(ffmpegCommand, (error) => {
